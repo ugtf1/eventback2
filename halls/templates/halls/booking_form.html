@@ -1,0 +1,219 @@
+{% extends "halls/base.html" %}
+{% block title %}Book a Hall — Safe Haven{% endblock %}
+
+{% block extra_head %}
+<style>
+  .form-wrap{max-width:900px;margin:28px auto;background:#fff;border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+  .form-header{background:linear-gradient(135deg, var(--blue), #153a74 60%, var(--yellow) 200%);color:#fff;padding:18px}
+  .form-body{padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .form-row{display:flex;flex-direction:column;gap:6px}
+  .form-row label{font-weight:700;color:#0a1b2a}
+  .input, select, textarea{
+    background:#f3f6fc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;outline:none;
+    transition:border-color var(--trans), box-shadow var(--trans)
+  }
+  .input:focus, select:focus, textarea:focus{
+    border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.2)
+  }
+  .row-span-2{grid-column:span 2}
+  .info{background:#f8fafc;border:1px dashed #dbeafe;padding:12px;border-radius:12px;color:#0f172a}
+  .status{font-weight:800}
+  .total{font-size:1.2rem;font-weight:900}
+  .actions{display:flex;gap:12px;justify-content:flex-end;padding:0 18px 18px}
+  .note{color:#475569}
+  .err{color:var(--danger);font-weight:700}
+  @media (max-width:780px){.form-body{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="form-wrap">
+    <div class="form-header">
+      <h2 style="margin:0">Booking Form</h2>
+      <div class="note">Fill in your details, select a hall and time. We’ll check availability and calculate pricing automatically.</div>
+    </div>
+    <form method="post" class="form-body" id="bookingForm">
+      {% csrf_token %}
+      {% if error %}<div class="row-span-2 err">{{ error }}</div>{% endif %}
+
+      <div class="form-row">
+        <label for="name">Name</label>
+        <input class="input" type="text" id="name" name="name" required />
+      </div>
+
+      <div class="form-row">
+        <label for="email">Email</label>
+        <input class="input" type="email" id="email" name="email" required />
+      </div>
+
+      <div class="form-row">
+        <label for="phone">Phone</label>
+        <input class="input" type="tel" id="phone" name="phone" required />
+      </div>
+
+      <div class="form-row">
+        <label for="address">Address</label>
+        <input class="input" type="text" id="address" name="address" />
+      </div>
+
+      <div class="form-row">
+        <label for="hall">Selected Hall</label>
+        <select id="hall" name="hall" required>
+          {% for h in halls %}
+          <option value="{{ h.id }}" data-rate="{{ h.hourly_rate }}" {% if selected_hall and h.id == selected_hall.id %}selected{% endif %}>
+            {{ h.name }} — ${{ h.hourly_rate }}/hr
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label for="purpose">Purpose of Booking</label>
+        <input class="input" type="text" id="purpose" name="purpose" required />
+      </div>
+
+      <div class="form-row">
+        <label for="start_datetime">Start Date and Time</label>
+        <input class="input" type="datetime-local" id="start_datetime" name="start_datetime" required />
+      </div>
+
+      <div class="form-row">
+        <label for="end_datetime">End Date and Time</label>
+        <input class="input" type="datetime-local" id="end_datetime" name="end_datetime" required />
+      </div>
+
+      <div class="row-span-2 info" id="calcBox">
+        <div><span class="status" id="availStatus">Select times to check availability…</span></div>
+        <div class="note">Rates are billed hourly. Partial hours are calculated proportionally.</div>
+        <div style="display:flex;gap:18px;margin-top:8px;flex-wrap:wrap">
+          <div>Hours: <strong id="hours">0</strong></div>
+          <div>Rate: $<strong id="rate">0</strong>/hr</div>
+          <div class="total">Total: $<span id="total">0</span></div>
+        </div>
+      </div>
+
+      <div class="actions row-span-2">
+        <a class="btn" href="{% url 'home' %}" style="background:linear-gradient(135deg,#64748b,#475569)">Cancel</a>
+        <button type="submit" class="btn">Proceed to Checkout</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function parseDT(id){
+    const el = document.getElementById(id);
+    if(!el.value) return null;
+    // Convert to ISO string understood by Django view
+    try{
+      const d = new Date(el.value);
+      if(Number.isNaN(d.getTime())) return null;
+      // Keep local values without timezone drift: reconstruct
+      const [date, time] = el.value.split('T');
+      return new Date(date + 'T' + time);
+    }catch{ return null; }
+  }
+  function hoursBetween(a,b){ return Math.max(0, (b - a) / 36e5); }
+
+  const hallSel = document.getElementById('hall');
+  const rateEl = document.getElementById('rate');
+  const hoursEl = document.getElementById('hours');
+  const totalEl = document.getElementById('total');
+  const statusEl = document.getElementById('availStatus');
+  const startEl = document.getElementById('start_datetime');
+  const endEl = document.getElementById('end_datetime');
+
+  function updateRate(){
+    const opt = hallSel.options[hallSel.selectedIndex];
+    rateEl.textContent = opt ? opt.dataset.rate : '0';
+  }
+
+  async function checkAndCalc(){
+    const start = parseDT('start_datetime');
+    const end = parseDT('end_datetime');
+    updateRate();
+
+    const rate = parseFloat(rateEl.textContent || '0');
+    if(!start || !end || end <= start){
+      statusEl.textContent = 'Select a valid start and end time.';
+      hoursEl.textContent = '0';
+      totalEl.textContent = '0';
+      statusEl.style.color = '#334155';
+      return;
+    }
+    const hrs = Math.round(hoursBetween(start, end) * 100) / 100;
+    hoursEl.textContent = hrs.toString();
+    const total = Math.round((rate * hrs) * 100) / 100;
+    totalEl.textContent = total.toLocaleString();
+
+    // Availability check (gracefully degrade if fails)
+    try{
+      const params = new URLSearchParams({
+        hall_id: hallSel.value,
+        start: start.toISOString(),
+        end: end.toISOString()
+      });
+      const res = await fetch(`{% url 'api_check_availability' %}?` + params.toString());
+      const data = await res.json();
+      if(data.ok){
+        if(data.available){
+          statusEl.textContent = 'Good news: your selected time is available.';
+          statusEl.style.color = 'var(--success)';
+        }else{
+          statusEl.textContent = 'Sorry, that slot is already booked. Try another time.';
+          statusEl.style.color = 'var(--danger)';
+        }
+      }else{
+        statusEl.textContent = 'Unable to check availability right now.';
+        statusEl.style.color = '#334155';
+      }
+    }catch(e){
+      statusEl.textContent = 'Network issue while checking availability.';
+      statusEl.style.color = '#334155';
+    }
+  }
+
+  hallSel.addEventListener('change', checkAndCalc);
+  startEl.addEventListener('change', checkAndCalc);
+  endEl.addEventListener('change', checkAndCalc);
+  document.addEventListener('DOMContentLoaded', () => {
+    updateRate();
+    // Prefill selected hall rate
+    checkAndCalc();
+  });
+
+  // On submit: if unavailable, block submission
+  document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+    const start = parseDT('start_datetime');
+    const end = parseDT('end_datetime');
+    if(!start || !end || end <= start){
+      e.preventDefault();
+      alert('Please select a valid start and end time.');
+      return;
+    }
+    try{
+      const params = new URLSearchParams({
+        hall_id: hallSel.value,
+        start: start.toISOString(),
+        end: end.toISOString()
+      });
+      const res = await fetch(`{% url 'api_check_availability' %}?` + params.toString());
+      const data = await res.json();
+      if(!(data.ok && data.available)){
+        e.preventDefault();
+        alert('That slot is not available. Please choose another time.');
+      } else {
+        // Convert local datetime-local to ISO for backend
+        // Replace inputs with ISO strings for server parse
+        document.getElementById('start_datetime').value = start.toISOString();
+        document.getElementById('end_datetime').value = end.toISOString();
+      }
+    }catch{
+      // Allow submit; server will validate again
+    }
+  });
+</script>
+{% endblock %}

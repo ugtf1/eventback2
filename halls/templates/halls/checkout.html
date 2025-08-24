@@ -1,0 +1,80 @@
+{% extends "halls/base.html" %}
+{% block title %}Checkout — Safe Haven{% endblock %}
+
+{% block extra_head %}
+<style>
+  .ck-wrap{max-width:900px;margin:28px auto;background:#fff;border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+  .ck-header{background:linear-gradient(135deg, var(--blue), #153a74 60%, var(--yellow) 200%);color:#fff;padding:18px}
+  .ck-body{padding:18px;display:grid;grid-template-columns:1.15fr .85fr;gap:18px}
+  .summary{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px}
+  .sum-row{display:flex;justify-content:space-between;margin:6px 0}
+  .sum-row strong{font-weight:800}
+  .pay-methods{display:grid;gap:12px}
+  .pm{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:var(--shadow)}
+  .pm button{min-width:140px}
+  @media (max-width:820px){.ck-body{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="ck-wrap">
+    <div class="ck-header">
+      <h2 style="margin:0">Checkout</h2>
+      <div>Almost done. Choose your preferred payment method.</div>
+    </div>
+    <div class="ck-body">
+      <div class="summary">
+        <h3 style="margin-top:0">Booking Summary</h3>
+        <div class="sum-row"><span>Customer</span><strong>{{ booking.name }}</strong></div>
+        <div class="sum-row"><span>Hall</span><strong>{{ booking.hall.name }}</strong></div>
+        <div class="sum-row"><span>Purpose</span><strong>{{ booking.purpose }}</strong></div>
+        <div class="sum-row"><span>Start</span><strong>{{ booking.start_datetime }}</strong></div>
+        <div class="sum-row"><span>End</span><strong>{{ booking.end_datetime }}</strong></div>
+        <div class="sum-row"><span>Hours</span><strong>{{ booking.hours }}</strong></div>
+        <hr />
+        <div class="sum-row" style="font-size:1.2rem"><span>Total</span><strong>${{ booking.total_amount }}</strong></div>
+        <p class="note">You’ll receive a confirmation after successful payment.</p>
+      </div>
+
+      <div class="pay-methods">
+        <div class="pm">
+          <div>
+            <div style="font-weight:800">Pay with PayPal</div>
+            <div class="note">Secure checkout via PayPal.</div>
+          </div>
+          <form method="post" action="/payments/paypal/create-order/">
+            {% csrf_token %}
+            <input type="hidden" name="booking_id" value="{{ booking.id }}" />
+            <button class="btn" type="submit">PayPal</button>
+          </form>
+        </div>
+
+        <div class="pm">
+          <div>
+            <div style="font-weight:800">Pay with Stripe</div>
+            <div class="note">Card payments powered by Stripe.</div>
+          </div>
+          <form method="post" action="/payments/stripe/create-session/">
+            {% csrf_token %}
+            <input type="hidden" name="booking_id" value="{{ booking.id }}" />
+            <button class="btn" type="submit">Stripe</button>
+          </form>
+        </div>
+
+        <div class="pm">
+          <div>
+            <div style="font-weight:800">Pay with Paystack</div>
+            <div class="note">Local cards and bank channels via Paystack.</div>
+          </div>
+          <form method="post" action="/payments/paystack/initialize/">
+            {% csrf_token %}
+            <input type="hidden" name="booking_id" value="{{ booking.id }}" />
+            <button class="btn" type="submit">Paystack</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

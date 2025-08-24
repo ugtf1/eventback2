@@ -1,0 +1,152 @@
+{% extends "halls/base.html" %}
+{% block title %}Safe Haven — Book Halls Effortlessly{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-inner">
+    <h1 style="margin:0 0 8px 0; font-size:2rem; font-weight:900;">Find your perfect date</h1>
+    <p style="margin:0 0 16px 0; opacity:.95;">Check live availability across the next six months. Blue = Available, Red = Booked</p>
+
+    <div class="cal-grid" id="calGrid">
+      <!-- Calendars injected by JS -->
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-title">Halls</div>
+  <div class="cards">
+    {% for hall in halls %}
+    <div class="card">
+      <div class="card-img">
+        {% if hall.image %}
+          <img src="{{ hall.image.url }}" alt="{{ hall.name }}" />
+        {% else %}
+          <img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=2069&auto=format&fit=crop" alt="{{ hall.name }}" />
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">{{ hall.name }}</h3>
+        <p class="card-desc">{{ hall.description|default:"A versatile, elegant space for your next event." }}</p>
+      </div>
+      <div class="card-meta">
+        <span class="price">${{ hall.hourly_rate }} / hour</span>
+        <a class="btn" href="{% url 'booking_form_for_hall' hall.id %}">Book</a>
+      </div>
+    </div>
+    {% empty %}
+    <p>No halls added yet.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Data from backend
+  const monthStarts = {{ calendar_month_starts|safe }};
+  const bookedDates = new Set({{ booked_dates_json|safe }}); // ISO yyyy-mm-dd
+
+  // Utilities
+  function fmtMonthYear(d) {
+    return d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+  }
+  function daysInMonth(year, month){ // month: 0-11
+    return new Date(year, month+1, 0).getDate();
+  }
+  function iso(d){ return d.toISOString().slice(0,10); }
+
+  // Render a single calendar
+  function renderCalendar(container, current) {
+    const year = current.getFullYear();
+    const month = current.getMonth();
+
+    // Header
+    const card = document.createElement('div');
+    card.className = 'cal-card';
+
+    const header = document.createElement('div');
+    header.className = 'cal-header';
+
+    const title = document.createElement('div');
+    title.className = 'cal-title';
+    title.textContent = fmtMonthYear(current);
+
+    const legend = document.createElement('div');
+    legend.className = 'legend';
+    legend.innerHTML = `
+      <span><i class="dot blue"></i> Available</span>
+      <span><i class="dot red"></i> Booked</span>
+    `;
+
+    header.appendChild(title);
+    header.appendChild(legend);
+
+    // Calendar grid
+    const grid = document.createElement('div');
+    grid.className = 'calendar';
+
+    const dows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    dows.forEach(d => {
+      const cell = document.createElement('div');
+      cell.className = 'dow';
+      cell.textContent = d;
+      grid.appendChild(cell);
+    });
+
+    const firstDay = new Date(year, month, 1);
+    const startIdx = firstDay.getDay(); // 0 Sun .. 6 Sat
+    const totalDays = daysInMonth(year, month);
+
+    // Previous month's trailing days to fill week
+    for (let i = 0; i < startIdx; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'day muted';
+      cell.textContent = '';
+      grid.appendChild(cell);
+    }
+
+    // Current month days
+    for (let d = 1; d <= totalDays; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'day';
+      cell.textContent = d;
+      const dateObj = new Date(year, month, d);
+      const key = iso(dateObj);
+      const isBooked = bookedDates.has(key);
+      cell.classList.add(isBooked ? 'booked' : 'available');
+      cell.title = isBooked ? 'Booked' : 'Available';
+
+      // Subtle interaction
+      cell.addEventListener('mouseenter', () => {
+        cell.style.transform = 'translateY(-3px)';
+      });
+      cell.addEventListener('mouseleave', () => {
+        cell.style.transform = '';
+      });
+
+      grid.appendChild(cell);
+    }
+
+    // Footer legend (mobile help)
+    const footer = document.createElement('div');
+    footer.className = 'cal-footer';
+    footer.textContent = 'Blue = Available, Red = Booked';
+
+    card.appendChild(header);
+    card.appendChild(grid);
+    card.appendChild(footer);
+
+    container.appendChild(card);
+  }
+
+  // Build six calendars
+  (function(){
+    const wrap = document.getElementById('calGrid');
+    monthStarts.forEach(ms => {
+      const d = new Date(ms + 'T00:00:00');
+      renderCalendar(wrap, d);
+    });
+  })();
+</script>
+{% endblock %}

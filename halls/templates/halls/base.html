@@ -1,0 +1,184 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Safe Haven{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --blue:#0a2342;
+      --blue-700:#0f2d5d;
+      --yellow:#ffd500;
+      --bg:#0e1220;
+      --text:#0e1117;
+      --muted:#6b7280;
+      --card:#ffffff;
+      --success:#14b8a6;
+      --danger:#ef4444;
+      --link:#2563eb;
+      --shadow:0 10px 25px rgba(0,0,0,.15);
+      --radius:14px;
+      --trans:.25s cubic-bezier(.4,0,.2,1);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0f172a;background:#f7f8fb}
+    a{color:inherit;text-decoration:none}
+    img{max-width:100%;display:block}
+
+    /* Header */
+    .site-header{
+      background: linear-gradient(135deg, var(--blue) 0%, #0b2f6b 50%, var(--yellow) 160%);
+      color:#fff;
+      position:sticky;top:0;z-index:50;
+      box-shadow:var(--shadow);
+    }
+    .nav{
+      max-width:1200px;margin:0 auto;
+      display:grid;grid-template-columns:1fr auto 1fr;
+      gap:16px;align-items:center;padding:14px 18px;
+    }
+    .brand{font-weight:800;letter-spacing:.4px;font-size:1.2rem;display:flex;align-items:center;gap:10px}
+    .brand-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.2)}
+    .menu{display:flex;gap:18px;align-items:center;justify-content:center}
+    .menu a{
+      position:relative;padding:8px 12px;border-radius:10px;color:#fff;font-weight:600;opacity:.95;
+      transition:transform var(--trans), background var(--trans), color var(--trans);
+    }
+    .menu a:hover{background:rgba(255,255,255,.12);transform:translateY(-1px)}
+    .menu a:active{transform:translateY(0)}
+    .search{
+      display:flex;justify-content:flex-end
+    }
+    .search input{
+      width:100%;max-width:340px;border:none;padding:10px 14px;border-radius:12px;
+      background:rgba(255,255,255,.2);color:#fff;outline:none;
+      transition:box-shadow var(--trans), background var(--trans)
+    }
+    .search input::placeholder{color:rgba(255,255,255,.8)}
+    .search input:focus{background:rgba(255,255,255,.28);box-shadow:0 0 0 3px rgba(255,255,255,.25)}
+    @media (max-width:840px){
+      .nav{grid-template-columns:1fr;gap:10px}
+      .menu{justify-content:flex-start;flex-wrap:wrap}
+      .search{justify-content:flex-start}
+    }
+
+    /* Hero with calendars */
+    .hero{
+      position:relative;min-height:70vh;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden
+    }
+    .hero::before{
+      content:"";position:absolute;inset:0;
+      background-image:url('https://images.unsplash.com/photo-1531058020387-3be344556be6?q=80&w=2070&auto=format&fit=crop');
+      background-size:cover;background-position:center;filter:brightness(.55);
+      transform:scale(1.02)
+    }
+    .hero-inner{position:relative;z-index:1;width:100%;max-width:1200px;padding:40px 18px}
+    .cal-grid{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:22px
+    }
+    @media (max-width:1100px){.cal-grid{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:720px){.cal-grid{grid-template-columns:1fr}}
+
+    .cal-card{
+      background:rgba(255,255,255,.1);backdrop-filter: blur(6px);
+      border:1px solid rgba(255,255,255,.25);
+      border-radius:16px;padding:12px 12px 16px;box-shadow:var(--shadow);
+      transition:transform var(--trans), background var(--trans), border-color var(--trans)
+    }
+    .cal-card:hover{transform:translateY(-4px);background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5)}
+    .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+    .cal-title{font-weight:700;letter-spacing:.4px}
+    .legend{display:flex;gap:18px;justify-content:flex-end;font-size:.9rem;opacity:.95}
+    .legend span{display:inline-flex;gap:8px;align-items:center}
+    .dot{width:12px;height:12px;border-radius:4px;display:inline-block}
+    .dot.blue{background:#3b82f6}
+    .dot.red{background:#ef4444}
+
+    .calendar{
+      --gap:6px; --size:36px;
+      display:grid;grid-template-columns:repeat(7,1fr);gap:var(--gap);user-select:none
+    }
+    .calendar .dow{font-size:.8rem;opacity:.9}
+    .day{
+      height:var(--size);display:flex;align-items:center;justify-content:center;border-radius:10px;
+      font-weight:600;background:rgba(255,255,255,.12);transition:transform var(--trans), background var(--trans), color var(--trans)
+    }
+    .day.muted{opacity:.45;background:rgba(255,255,255,.08)}
+    .day.available{background:rgba(59,130,246,.15);color:#fff}
+    .day.booked{background:rgba(239,68,68,.28);color:#fff}
+    .day:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.15)}
+    .cal-footer{margin-top:8px;display:flex;justify-content:flex-end;font-size:.85rem;opacity:.95}
+
+    /* Halls grid */
+    .section{
+      max-width:1200px;margin:40px auto;padding:0 18px
+    }
+    .section-title{font-size:1.6rem;font-weight:800;color:#0a1b2a;margin-bottom:14px}
+    .cards{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:20px
+    }
+    @media (max-width:1100px){.cards{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:720px){.cards{grid-template-columns:1fr}}
+
+    .card{
+      background:var(--card);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);
+      display:flex;flex-direction:column;transition:transform var(--trans), box-shadow var(--trans)
+    }
+    .card:hover{transform:translateY(-6px);box-shadow:0 16px 40px rgba(0,0,0,.18)}
+    .card-img{aspect-ratio:16/9;background:#e5e7eb;overflow:hidden}
+    .card-body{padding:16px}
+    .card-title{font-weight:800;margin:0 0 6px 0}
+    .card-desc{color:#475569;margin:0 0 10px 0}
+    .card-meta{display:flex;align-items:center;justify-content:space-between;color:#334155;margin-top:auto;padding:0 16px 16px}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;
+      padding:10px 14px;border-radius:12px;border:none;cursor:pointer;font-weight:700;
+      background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;transition:transform var(--trans), box-shadow var(--trans), opacity var(--trans)
+    }
+    .btn:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(37,99,235,.35)}
+    .btn:active{transform:translateY(0)}
+    .price{font-weight:800}
+
+    /* Footer */
+    .footer{
+      background:#0a2144;color:#dbeafe;margin-top:50px
+    }
+    .footer-inner{
+      max-width:1200px;margin:0 auto;padding:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav">
+      <div class="brand">
+        <span class="brand-badge">🏛️</span> Safe Haven
+      </div>
+      <div class="menu">
+        <a href="https://www.ugtf.org" target="_blank" rel="noopener">Home</a>
+        <a href="{% url 'home' %}">Halls</a>
+      </div>
+      <div class="search">
+        <form action="{% url 'home' %}" method="get" style="width:100%;">
+          <input name="q" type="search" placeholder="Search halls..." />
+        </form>
+      </div>
+    </nav>
+  </header>
+
+  {% block content %}{% endblock %}
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>&copy; {{ now|default:None|date:"Y" }} Safe Haven. All rights reserved.</div>
+      <div>Powered by UGTF.</div>
+    </div>
+  </footer>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
