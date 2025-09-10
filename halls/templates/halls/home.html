@@ -19,10 +19,10 @@
     {% for hall in halls %}
     <div class="card">
       <div class="card-img">
-        {% if hall.image %}
-          <img src="{{ hall.image.url }}" alt="{{ hall.name }}" />
+        {% if hall.image_url %}
+          <img src="{{ hall.image_url }}" alt="{{ hall.name }}" />
         {% else %}
-          <img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=2069&auto=format&fit=crop" alt="{{ hall.name }}" />
+          <img src="https://images.unsplash.com/photo-1696766984569-a33d52748dba?q=80&w=1032&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="{{ hall.name }}" />
         {% endif %}
       </div>
       <div class="card-body">
